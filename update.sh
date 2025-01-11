@@ -4,6 +4,7 @@ check_package() {
     local package_name=$1
     local repo_url=$2
     local egg_name=$3
+    local needs_update=0
     
     echo "Checking $package_name..."
     
@@ -21,36 +22,43 @@ check_package() {
     
     if [ -z "$installed_commit" ]; then
         echo "Unable to determine installed commit hash for $package_name."
-        return 1
+        needs_update=1
     elif [ "${latest_commit:0:${#installed_commit}}" != "$installed_commit" ]; then
         echo "New version available for $package_name."
-        return 1
+        needs_update=1
     else
         echo "$package_name is up to date."
-        return 0
+        needs_update=0
     fi
+    
+    return $needs_update
 }
 
 # Activate the virtual environment
 echo "Activating virtual environment..."
 source ./venv/bin/activate
 
-# Check both packages and update JitStreamer if needed
+# Initialize update flag
 needs_update=0
 
-if ! check_package "JitStreamer" "https://github.com/jawshoeadan/JitStreamer.git" "JitStreamer" || \
-   ! check_package "pymobiledevice3" "https://github.com/jawshoeadan/pymobiledevice3.git" "pymobiledevice3"; then
+# Check JitStreamer
+check_package "JitStreamer" "https://github.com/jawshoeadan/JitStreamer.git" "JitStreamer"
+if [ $? -eq 1 ]; then
+    needs_update=1
+fi
+
+# Check pymobiledevice3
+check_package "pymobiledevice3" "https://github.com/jawshoeadan/pymobiledevice3.git" "pymobiledevice3"
+if [ $? -eq 1 ]; then
+    needs_update=1
+fi
+
+# If either package needed an update, install latest JitStreamer
+if [ $needs_update -eq 1 ]; then
     echo "Updates needed - installing latest JitStreamer..."
     pip install --upgrade "git+https://github.com/jawshoeadan/JitStreamer.git#egg=JitStreamer"
 fi
 
-# If either package needs an update, install latest JitStreamer
-if [ $jitstreamer_status -eq 1 ] || [ $pymd3_status -eq 1 ]; then
-    echo "Updates needed - installing latest JitStreamer..."
-    pip install --upgrade "git+https://github.com/jawshoeadan/JitStreamer.git#egg=JitStreamer"
-fi
-
-# Update Tailscale
 echo "Updating Tailscale..."
 sudo tailscale update
 echo "All updates completed."
