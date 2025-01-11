@@ -1,7 +1,6 @@
 #!/bin/bash
-# Claude helped
-# Function to check and update a package
-check_and_update_package() {
+# Function to check a package and return update status
+check_package() {
     local package_name=$1
     local repo_url=$2
     local egg_name=$3
@@ -21,19 +20,14 @@ check_and_update_package() {
     echo "Latest commit: ${latest_commit:0:7}"
     
     if [ -z "$installed_commit" ]; then
-        echo "Unable to determine installed commit hash. Will attempt to update."
-        needs_update=true
+        echo "Unable to determine installed commit hash for $package_name."
+        return 1
     elif [ "${latest_commit:0:${#installed_commit}}" != "$installed_commit" ]; then
-        echo "New version available."
-        needs_update=true
+        echo "New version available for $package_name."
+        return 1
     else
         echo "$package_name is up to date."
-        needs_update=false
-    fi
-    
-    if [ "$needs_update" = true ]; then
-        echo "Updating $package_name..."
-        pip install --upgrade "git+$repo_url#egg=$egg_name"
+        return 0
     fi
 }
 
@@ -41,14 +35,17 @@ check_and_update_package() {
 echo "Activating virtual environment..."
 source ./venv/bin/activate
 
-# Check and update JitStreamer
-check_and_update_package "JitStreamer" "https://github.com/jawshoeadan/JitStreamer.git" "JitStreamer"
+# Check both packages first
+jitstreamer_status=$(check_package "JitStreamer" "https://github.com/jawshoeadan/JitStreamer.git" "JitStreamer")
+pymd3_status=$(check_package "pymobiledevice3" "https://github.com/jawshoeadan/pymobiledevice3.git" "pymobiledevice3")
 
-# Check and update pymobiledevice3
-check_and_update_package "pymobiledevice3" "https://github.com/jawshoeadan/pymobiledevice3.git" "pymobiledevice3"
+# If either package needs an update, install latest JitStreamer
+if [ $jitstreamer_status -eq 1 ] || [ $pymd3_status -eq 1 ]; then
+    echo "Updates needed - installing latest JitStreamer..."
+    pip install --upgrade "git+https://github.com/jawshoeadan/JitStreamer.git#egg=JitStreamer"
+fi
 
 # Update Tailscale
 echo "Updating Tailscale..."
 sudo tailscale update
-
 echo "All updates completed."
