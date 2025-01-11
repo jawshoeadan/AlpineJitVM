@@ -35,9 +35,14 @@ check_package() {
 echo "Activating virtual environment..."
 source ./venv/bin/activate
 
-# Check both packages first
-jitstreamer_status=$(check_package "JitStreamer" "https://github.com/jawshoeadan/JitStreamer.git" "JitStreamer")
-pymd3_status=$(check_package "pymobiledevice3" "https://github.com/jawshoeadan/pymobiledevice3.git" "pymobiledevice3")
+# Check both packages and update JitStreamer if needed
+needs_update=0
+
+if ! check_package "JitStreamer" "https://github.com/jawshoeadan/JitStreamer.git" "JitStreamer" || \
+   ! check_package "pymobiledevice3" "https://github.com/jawshoeadan/pymobiledevice3.git" "pymobiledevice3"; then
+    echo "Updates needed - installing latest JitStreamer..."
+    pip install --upgrade "git+https://github.com/jawshoeadan/JitStreamer.git#egg=JitStreamer"
+fi
 
 # If either package needs an update, install latest JitStreamer
 if [ $jitstreamer_status -eq 1 ] || [ $pymd3_status -eq 1 ]; then
